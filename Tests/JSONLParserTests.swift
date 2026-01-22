@@ -42,8 +42,9 @@ final class JSONLParserTests: XCTestCase {
             outputTokens: 50
         )
 
-        // 100 + 200 + 50 + (1000 * 0.1) = 450
-        XCTAssertEqual(usage.weightedTotal, 450.0, accuracy: 0.01)
+        // Base weightedTotal is just input + output = 150
+        // Model multiplier is applied at LogEntry level
+        XCTAssertEqual(usage.weightedTotal, 150.0, accuracy: 0.01)
     }
 
     func testDateParsing() {

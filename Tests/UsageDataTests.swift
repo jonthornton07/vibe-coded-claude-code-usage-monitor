@@ -65,7 +65,8 @@ final class UsageDataTests: XCTestCase {
 
     func testStatusBarText() {
         let usageData = createUsageData(totalTokens: 12500)
-        XCTAssertEqual(usageData.statusBarText, "12k/44k")
+        // 12500 / 44000 = 28.4%
+        XCTAssertEqual(usageData.statusBarText, "28.4%")
     }
 
     func testEmptyUsageData() {
@@ -96,7 +97,7 @@ final class UsageDataTests: XCTestCase {
             outputTokens: 0
         )
 
-        let message = LogEntry.Message(role: "assistant", usage: usage)
+        let message = LogEntry.Message(role: "assistant", model: "claude-sonnet-4-20250514", usage: usage)
 
         return LogEntry(
             type: "assistant",

@@ -61,14 +61,15 @@ final class SessionManagerTests: XCTestCase {
         let entry2 = createLogEntry(sessionId: "test", timestamp: formatter.string(from: sessionStart.addingTimeInterval(3600)), tokens: 200)
         let entry3 = createLogEntry(sessionId: "test", timestamp: formatter.string(from: sessionStart.addingTimeInterval(4 * 3600)), tokens: 300)
 
-        // Entry outside 5 hour window (6 hours from start)
+        // Entry outside 5 hour window (6 hours from start) - starts a new session window
         let entry4 = createLogEntry(sessionId: "test", timestamp: formatter.string(from: sessionStart.addingTimeInterval(6 * 3600)), tokens: 400)
 
         let sessions = sessionManager.buildSessions(from: [entry1, entry2, entry3, entry4])
 
-        XCTAssertEqual(sessions.count, 1)
-        let session = sessions.first!
-        XCTAssertEqual(session.entries.count, 3) // Should not include entry4
+        // Entry4 starts a new session window, so we get 2 sessions
+        XCTAssertEqual(sessions.count, 2)
+        let firstSession = sessions.first { $0.entries.count == 3 }!
+        XCTAssertEqual(firstSession.entries.count, 3) // First window has entries 1, 2, 3
     }
 
     // Helper to create log entries for testing
@@ -80,7 +81,7 @@ final class SessionManagerTests: XCTestCase {
             outputTokens: 0
         )
 
-        let message = LogEntry.Message(role: "assistant", usage: usage)
+        let message = LogEntry.Message(role: "assistant", model: "claude-sonnet-4-20250514", usage: usage)
 
         return LogEntry(
             type: "assistant",
