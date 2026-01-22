@@ -221,8 +221,7 @@ class StatusBarController {
         case .warning, .critical:
             let color: NSColor = currentUsageData.usageLevel == .warning ? .systemOrange : .systemRed
             let attributes: [NSAttributedString.Key: Any] = [
-                .foregroundColor: color,
-                .font: NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+                .foregroundColor: color
             ]
             button.attributedTitle = NSAttributedString(string: text, attributes: attributes)
         }
