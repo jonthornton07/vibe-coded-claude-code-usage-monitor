@@ -24,10 +24,9 @@ struct Session {
     }
 
     /// Calculate total weighted tokens used in this session
+    /// Accounts for model-specific multipliers (Opus costs more)
     var totalTokens: Double {
-        entries
-            .compactMap { $0.message?.usage }
-            .reduce(0.0) { $0 + $1.weightedTotal }
+        entries.reduce(0.0) { $0 + $1.weightedTokens }
     }
 
     /// Percentage of 44,000 token limit used
@@ -52,5 +51,18 @@ struct Session {
         let formatter = DateFormatter()
         formatter.dateFormat = "h:mm a"
         return formatter.string(from: startTime)
+    }
+
+    /// Get the primary model used in this session (most recent)
+    var modelName: String {
+        guard let model = entries.last?.message?.model else { return "Unknown" }
+        if model.contains("opus") {
+            return "Opus"
+        } else if model.contains("sonnet") {
+            return "Sonnet"
+        } else if model.contains("haiku") {
+            return "Haiku"
+        }
+        return model
     }
 }

@@ -10,6 +10,7 @@ struct LogEntry: Codable {
 
     struct Message: Codable {
         let role: String?
+        let model: String?
         let usage: Usage?
     }
 
@@ -27,7 +28,6 @@ struct LogEntry: Codable {
         }
 
         /// Calculate total token count for 44k limit
-        /// Note: input_tokens already accounts for cache behavior, don't double-count
         var weightedTotal: Double {
             return Double(inputTokens + outputTokens)
         }
@@ -61,5 +61,21 @@ struct LogEntry: Codable {
     /// Check if this entry is an assistant message with usage data
     var isAssistantWithUsage: Bool {
         return type == "assistant" && message?.usage != nil
+    }
+
+    /// Get the model multiplier for rate limit calculation
+    /// Opus costs more against the rate limit than Sonnet
+    var modelMultiplier: Double {
+        guard let model = message?.model?.lowercased() else { return 1.0 }
+        if model.contains("opus") {
+            return 2.25  // Opus tokens count ~2.25x against the limit
+        }
+        return 1.0  // Sonnet and others at base rate
+    }
+
+    /// Calculate weighted tokens for this entry (accounting for model cost)
+    var weightedTokens: Double {
+        guard let usage = message?.usage else { return 0 }
+        return Double(usage.inputTokens + usage.outputTokens) * modelMultiplier
     }
 }

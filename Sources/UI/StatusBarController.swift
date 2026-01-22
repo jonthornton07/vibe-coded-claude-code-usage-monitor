@@ -146,7 +146,7 @@ class StatusBarController {
     private func createSessionItem(_ session: Session) -> NSMenuItem {
         let tokens = String(format: "%.0fk", session.totalTokens / 1000)
         let percentage = String(format: "%.0f%%", session.usagePercentage)
-        let title = "  \(tokens) (\(percentage)) - \(session.timeRemainingFormatted) left"
+        let title = "  \(session.modelName): \(tokens) (\(percentage)) - \(session.timeRemainingFormatted) left"
         let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
