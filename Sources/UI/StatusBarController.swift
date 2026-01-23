@@ -1,5 +1,4 @@
 import Cocoa
-import UserNotifications
 
 /// Controls the macOS menu bar status item
 class StatusBarController {
@@ -16,18 +15,7 @@ class StatusBarController {
         setupFileMonitoring()
         setupSystemNotifications()
         setupRefreshTimer()
-        requestNotificationPermissions()
         refreshUsage()
-    }
-    
-    private func requestNotificationPermissions() {
-        DispatchQueue.main.async {
-            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
-                if let error = error {
-                    print("Notification permission error: \(error)")
-                }
-            }
-        }
     }
 
     deinit {
@@ -242,22 +230,12 @@ class StatusBarController {
     }
     
     private func showHighUsageNotification() {
-        let content = UNMutableNotificationContent()
-        content.title = "Claude Code Usage Warning"
-        content.body = String(format: "Usage at %.0f%% - Consider wrapping up soon", currentUsageData.usagePercentage)
-        content.sound = .default
-        
-        let request = UNNotificationRequest(
-            identifier: "high-usage-\(Date().timeIntervalSince1970)",
-            content: content,
-            trigger: nil
-        )
-        
-        UNUserNotificationCenter.current().add(request) { error in
-            if let error = error {
-                print("Failed to show notification: \(error)")
-            }
-        }
+        let alert = NSAlert()
+        alert.messageText = "Claude Code Usage Warning"
+        alert.informativeText = String(format: "Usage at %.0f%% - Consider wrapping up soon", currentUsageData.usagePercentage)
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     private func updateStatusBarDisplay() {
