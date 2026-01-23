@@ -20,11 +20,11 @@ A native macOS status bar app that monitors Claude Code token usage in real-time
 git clone https://github.com/yourusername/claude-usage-monitor-mac.git
 cd claude-usage-monitor-mac
 
-# Build with Swift Package Manager
-swift build -c release
+# Setup dependencies and build
+make release
 
-# Run the app
-.build/release/ClaudeCodeMonitor
+# Or install to /usr/local/bin
+make install
 ```
 
 ## Configuration
@@ -43,6 +43,7 @@ CLAUDE_PROJECTS_PATH=/path/to/test/data .build/release/ClaudeCodeMonitor
 ```
 
 This is useful for:
+
 - Testing with mock data
 - Non-standard Claude installations
 - Development and debugging
@@ -58,12 +59,7 @@ The app runs as a menu bar application (no dock icon). Click the menu bar item t
 
 ### Token Calculation
 
-Tokens are calculated using the formula:
-```
-total = input_tokens + cache_creation_input_tokens + output_tokens + (cache_read_input_tokens * 0.1)
-```
-
-Cache read tokens are counted at 10% cost (90% discount) per Anthropic's prompt caching pricing.
+Token usage is retrieved via [ccusage](https://github.com/ryoppippi/ccusage), which accurately parses Claude Code logs and handles token counting, including cache discounts.
 
 ### Color Indicators
 
@@ -75,31 +71,35 @@ Cache read tokens are counted at 10% cost (90% discount) per Anthropic's prompt 
 
 - macOS 13.0 or later
 - Swift 5.9 or later
+- [ccusage](https://github.com/ryoppippi/ccusage) installed (`npm install -g ccusage`)
 - Claude Code installed with logs at `~/.claude/projects/`
 
 ## How It Works
 
 The app:
+
 1. Monitors `~/.claude/projects/` for changes using FSEvents
-2. Parses JSONL log files to extract token usage
-3. Groups entries by session ID and calculates 5-hour windows
-4. Sums all active sessions and displays in the menu bar
-5. Updates automatically when new messages are logged
+2. Calls `ccusage` CLI to get accurate token usage data
+3. Displays the active session's usage in the menu bar
+4. Updates automatically when new messages are logged
 
 ## Project Structure
 
 ```
 Sources/
 ├── main.swift                      # App entry point
+├── Config.swift                    # Configuration constants
 ├── Models/
 │   ├── LogEntry.swift             # JSONL log entry model
 │   ├── Session.swift              # 5-hour session model
 │   └── UsageData.swift            # Aggregated usage data
 ├── Parsers/
 │   └── JSONLParser.swift          # JSONL file parser
+├── Services/
+│   └── CCUsageService.swift       # ccusage CLI wrapper
 ├── Managers/
 │   ├── SessionManager.swift       # Session grouping logic
-│   └── UsageCalculator.swift     # Token calculation
+│   └── UsageCalculator.swift      # Token calculation
 ├── Monitoring/
 │   └── FileMonitor.swift          # FSEvents file watcher
 └── UI/
@@ -108,29 +108,21 @@ Sources/
 
 ## Development
 
-### Running in Development
-
 ```bash
-swift run
+make help      # Show all available commands
+make setup     # Check/install dependencies (ccusage)
+make build     # Build debug version
+make release   # Build release version
+make run       # Build and run
+make test      # Run tests
+make install   # Install to /usr/local/bin
+make clean     # Remove build artifacts
 ```
-
-### Running Tests
-
-```bash
-swift test
-```
-
-### Creating a Release Build
-
-```bash
-swift build -c release
-```
-
-The compiled binary will be at `.build/release/ClaudeCodeMonitor`.
 
 ## Roadmap
 
 Future enhancements:
+
 - [ ] Preferences window for plan selection (Pro/Max5/Max20/Custom)
 - [ ] Notifications when approaching token limit
 - [ ] Historical usage graphs
