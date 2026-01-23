@@ -119,6 +119,18 @@ make install   # Install to /usr/local/bin
 make clean     # Remove build artifacts
 ```
 
+## Run at Login
+
+To have the app start automatically when you log in:
+
+1. Run `make install` to install the binary
+2. Open **System Settings → General → Login Items**
+3. Click **+** under "Open at Login"
+4. Press `Cmd+Shift+G` and enter `/usr/local/bin/ClaudeCodeMonitor`
+5. Click Add
+
+The app will now start automatically on login and appear in your menu bar.
+
 ## Roadmap
 
 - [x] Notifications when approaching token limit (85%)
