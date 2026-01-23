@@ -117,6 +117,8 @@ make run       # Build and run
 make test      # Run tests
 make install   # Install to /usr/local/bin
 make clean     # Remove build artifacts
+make enable    # Enable launch at login (auto-start)
+make disable   # Disable launch at login
 ```
 
 ## Roadmap

@@ -1,7 +1,9 @@
-.PHONY: setup build release install uninstall clean test run help
+.PHONY: setup build release install uninstall clean test run help enable disable
 
 BINARY_NAME = ClaudeCodeMonitor
 INSTALL_PATH = /usr/local/bin
+PLIST_NAME = com.claudecodemonitor.plist
+LAUNCH_AGENTS = $(HOME)/Library/LaunchAgents
 
 help:
 	@echo "Usage: make [target]"
@@ -15,6 +17,8 @@ help:
 	@echo "  run       Build and run debug version"
 	@echo "  test      Run tests"
 	@echo "  clean     Remove build artifacts"
+	@echo "  enable    Enable launch at login"
+	@echo "  disable   Disable launch at login"
 
 setup:
 	@echo "Checking dependencies..."
@@ -30,8 +34,8 @@ release: setup
 
 install: release
 	@echo "Installing to $(INSTALL_PATH)/$(BINARY_NAME)..."
-	@mkdir -p $(INSTALL_PATH)
-	cp .build/release/$(BINARY_NAME) $(INSTALL_PATH)/$(BINARY_NAME)
+	@sudo mkdir -p $(INSTALL_PATH)
+	sudo cp .build/release/$(BINARY_NAME) $(INSTALL_PATH)/$(BINARY_NAME)
 	@echo "Installed successfully"
 
 uninstall:
@@ -48,3 +52,14 @@ test: setup
 clean:
 	swift package clean
 	rm -rf .build
+
+enable: install
+	@mkdir -p $(LAUNCH_AGENTS)
+	cp $(PLIST_NAME) $(LAUNCH_AGENTS)/$(PLIST_NAME)
+	launchctl load $(LAUNCH_AGENTS)/$(PLIST_NAME)
+	@echo "Enabled launch at login"
+
+disable:
+	-launchctl unload $(LAUNCH_AGENTS)/$(PLIST_NAME) 2>/dev/null
+	rm -f $(LAUNCH_AGENTS)/$(PLIST_NAME)
+	@echo "Disabled launch at login"
