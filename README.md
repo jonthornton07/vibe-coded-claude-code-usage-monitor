@@ -131,11 +131,6 @@ To have the app start automatically when you log in:
 
 The app will now start automatically on login and appear in your menu bar.
 
-## Roadmap
-
-- [x] Notifications when approaching token limit (85%)
-- [ ] Preferences window for plan selection
-
 ## License
 
 MIT License - see LICENSE file for details
