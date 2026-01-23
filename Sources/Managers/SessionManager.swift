@@ -101,6 +101,14 @@ class SessionManager {
     /// - Parameter parser: JSONLParser instance
     /// - Returns: Array of active Session objects
     func loadActiveSessions(using parser: JSONLParser) -> [Session] {
+        let allSessions = loadAllSessions(using: parser)
+        return getActiveSessions(allSessions)
+    }
+
+    /// Parse all logs and return ALL sessions (for auto-calibration)
+    /// - Parameter parser: JSONLParser instance
+    /// - Returns: Array of all Session objects
+    func loadAllSessions(using parser: JSONLParser) -> [Session] {
         var allEntries: [LogEntry] = []
 
         // Find all project directories
@@ -119,9 +127,106 @@ class SessionManager {
         }
 
         // Build all sessions
-        let allSessions = buildSessions(from: allEntries)
+        return buildSessions(from: allEntries)
+    }
 
-        // Return only active ones
-        return getActiveSessions(allSessions)
+    /// Calculate the current clock-aligned 5-hour block's token total
+    /// - Parameter parser: JSONLParser instance
+    /// - Returns: Total tokens in the current 5-hour block
+    func getCurrentBlockTokens(using parser: JSONLParser) -> Double {
+        var allEntries: [LogEntry] = []
+        
+        // Find all project directories and parse all JSONL files
+        let projectDirs = JSONLParser.findProjectDirectories()
+        for projectDir in projectDirs {
+            do {
+                let fileEntries = try parser.parseDirectory(directoryURL: projectDir)
+                for (_, entries) in fileEntries {
+                    allEntries.append(contentsOf: entries)
+                }
+            } catch {
+                // Skip errors
+            }
+        }
+        
+        // Filter for assistant messages with usage data
+        let assistantEntries = allEntries.filter { $0.isAssistantWithUsage }
+        
+        // Calculate the current block boundaries
+        let now = Date()
+        let calendar = Calendar.current
+        let hour = calendar.component(.hour, from: now)
+        let blockHour = (hour / 5) * 5  // 0, 5, 10, 15, 20
+        
+        var components = calendar.dateComponents([.year, .month, .day], from: now)
+        components.hour = blockHour
+        components.minute = 0
+        components.second = 0
+        
+        guard let blockStart = calendar.date(from: components) else { return 0 }
+        let blockEnd = blockStart.addingTimeInterval(5 * 60 * 60)
+        
+        // Sum tokens for entries in the current block
+        var totalTokens: Double = 0
+        for entry in assistantEntries {
+            guard let entryDate = entry.date,
+                  entryDate >= blockStart,
+                  entryDate < blockEnd else { continue }
+            totalTokens += entry.totalTokensWithCache
+        }
+        
+        return totalTokens
+    }
+
+    /// Find the maximum tokens used in any clock-aligned 5-hour block (like ccusage)
+    /// - Parameter parser: JSONLParser instance
+    /// - Returns: Maximum tokens with cache found in any 5-hour block
+    func findMaxHistoricalTokens(using parser: JSONLParser) -> Double {
+        var allEntries: [LogEntry] = []
+        
+        // Find all project directories and parse all JSONL files
+        let projectDirs = JSONLParser.findProjectDirectories()
+        for projectDir in projectDirs {
+            do {
+                let fileEntries = try parser.parseDirectory(directoryURL: projectDir)
+                for (_, entries) in fileEntries {
+                    allEntries.append(contentsOf: entries)
+                }
+            } catch {
+                // Skip errors
+            }
+        }
+        
+        // Filter for assistant messages with usage data
+        let assistantEntries = allEntries.filter { $0.isAssistantWithUsage }
+        
+        // Group entries into clock-aligned 5-hour blocks (like ccusage)
+        var blockTotals: [String: Double] = [:]
+        
+        for entry in assistantEntries {
+            guard let entryDate = entry.date else { continue }
+            
+            // Calculate the block ID (clock-aligned 5-hour window)
+            let calendar = Calendar.current
+            let hour = calendar.component(.hour, from: entryDate)
+            let blockHour = (hour / 5) * 5  // 0, 5, 10, 15, 20
+            
+            // Create block start time
+            var components = calendar.dateComponents([.year, .month, .day], from: entryDate)
+            components.hour = blockHour
+            components.minute = 0
+            components.second = 0
+            
+            guard let blockStart = calendar.date(from: components) else { continue }
+            let blockId = ISO8601DateFormatter().string(from: blockStart)
+            
+            // Sum all token types (input + output + cacheCreation + cacheRead)
+            blockTotals[blockId, default: 0] += entry.totalTokensWithCache
+        }
+        
+        // Find the max block total
+        let maxTokens = blockTotals.values.max() ?? 0
+        print("Found \(blockTotals.count) historical blocks, max tokens: \(String(format: "%.0f", maxTokens))")
+        return maxTokens
     }
 }

@@ -84,20 +84,15 @@ class StatusBarController {
 
         let menu = NSMenu()
 
-        // Section 1: Current Usage
+        // Section 1: Current Usage (from ccusage)
         menu.addItem(createUsageHeaderItem())
 
-        if !currentUsageData.activeSessions.isEmpty {
+        if currentUsageData.maxTokens > 0 {
             menu.addItem(createTokensUsedItem())
             menu.addItem(createPercentageItem())
-
-            // Show session details if there are active sessions
-            menu.addItem(NSMenuItem.separator())
-            menu.addItem(createSessionsHeaderItem())
-
-            for session in currentUsageData.activeSessions.prefix(5) {
-                menu.addItem(createSessionItem(session))
-            }
+            menu.addItem(createTimeRemainingItem())
+            menu.addItem(createModelsItem())
+            menu.addItem(createCostItem())
         } else {
             menu.addItem(createNoActiveSessionsItem())
         }
@@ -123,8 +118,7 @@ class StatusBarController {
     }
 
     private func createTokensUsedItem() -> NSMenuItem {
-        let tokens = String(format: "%.0f", currentUsageData.totalTokens)
-        let item = NSMenuItem(title: "  Tokens: \(tokens) / 44,000", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: "  Tokens: \(currentUsageData.tokensFormatted) / \(currentUsageData.maxTokensFormatted)", action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
     }
@@ -136,24 +130,36 @@ class StatusBarController {
         return item
     }
 
-    private func createSessionsHeaderItem() -> NSMenuItem {
-        let count = currentUsageData.activeSessions.count
-        let item = NSMenuItem(title: "Active Sessions (\(count))", action: nil, keyEquivalent: "")
+    private func createTimeRemainingItem() -> NSMenuItem {
+        let item = NSMenuItem(title: "  Resets in: \(currentUsageData.timeRemainingFormatted)", action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
     }
 
-    private func createSessionItem(_ session: Session) -> NSMenuItem {
-        let tokens = String(format: "%.0fk", session.totalTokens / 1000)
-        let percentage = String(format: "%.0f%%", session.usagePercentage)
-        let title = "  \(session.modelName): \(tokens) (\(percentage)) - \(session.timeRemainingFormatted) left"
-        let item = NSMenuItem(title: title, action: nil, keyEquivalent: "")
+    private func createModelsItem() -> NSMenuItem {
+        let modelNames = currentUsageData.models
+            .filter { !$0.hasPrefix("<") } // Filter out <synthetic>
+            .map { model -> String in
+                if model.contains("opus") { return "Opus" }
+                if model.contains("sonnet") { return "Sonnet" }
+                if model.contains("haiku") { return "Haiku" }
+                return model
+            }
+        let modelsText = modelNames.isEmpty ? "None" : modelNames.joined(separator: ", ")
+        let item = NSMenuItem(title: "  Models: \(modelsText)", action: nil, keyEquivalent: "")
+        item.isEnabled = false
+        return item
+    }
+
+    private func createCostItem() -> NSMenuItem {
+        let cost = String(format: "$%.2f", currentUsageData.costUSD)
+        let item = NSMenuItem(title: "  Cost: \(cost)", action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
     }
 
     private func createNoActiveSessionsItem() -> NSMenuItem {
-        let item = NSMenuItem(title: "  No active sessions", action: nil, keyEquivalent: "")
+        let item = NSMenuItem(title: "  No active block (ccusage not available?)", action: nil, keyEquivalent: "")
         item.isEnabled = false
         return item
     }
@@ -183,7 +189,7 @@ class StatusBarController {
     @objc private func aboutClicked() {
         let alert = NSAlert()
         alert.messageText = "Claude Code Monitor"
-        alert.informativeText = "Monitor your Claude Code token usage in real-time.\n\nVersion 1.0\nBuilt with Swift"
+        alert.informativeText = "Monitor your Claude Code token usage in real-time.\n\nPowered by ccusage\nVersion 1.0"
         alert.alertStyle = .informational
         alert.addButton(withTitle: "OK")
         alert.runModal()

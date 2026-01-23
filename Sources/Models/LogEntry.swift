@@ -28,6 +28,7 @@ struct LogEntry: Codable {
         }
 
         /// Calculate total token count for 44k limit
+        /// Cache tokens don't count against Claude Code's session limit
         var weightedTotal: Double {
             return Double(inputTokens + outputTokens)
         }
@@ -66,16 +67,20 @@ struct LogEntry: Codable {
     /// Get the model multiplier for rate limit calculation
     /// Opus costs more against the rate limit than Sonnet
     var modelMultiplier: Double {
-        guard let model = message?.model?.lowercased() else { return 1.0 }
-        if model.contains("opus") {
-            return 2.25  // Opus tokens count ~2.25x against the limit
-        }
-        return 1.0  // Sonnet and others at base rate
+        return Config.modelMultiplier(for: message?.model)
     }
 
     /// Calculate weighted tokens for this entry (accounting for model cost)
+    /// Formula: (input_tokens + output_tokens) * model_multiplier
+    /// Note: cache tokens don't count against Claude Code's 44k session limit
     var weightedTokens: Double {
         guard let usage = message?.usage else { return 0 }
         return Double(usage.inputTokens + usage.outputTokens) * modelMultiplier
+    }
+
+    /// Total tokens including cache tokens (for auto-calibration like ccusage)
+    var totalTokensWithCache: Double {
+        guard let usage = message?.usage else { return 0 }
+        return Double(usage.inputTokens + usage.outputTokens + usage.cacheCreationInputTokens + usage.cacheReadInputTokens)
     }
 }

@@ -11,9 +11,11 @@ struct Session {
 
     /// Check if session is still active (within 5 hours)
     var isActive: Bool {
-        let now = Date()
-        let elapsed = now.timeIntervalSince(startTime)
-        return elapsed < Self.sessionDuration
+        let cutoff = Date().addingTimeInterval(-Self.sessionDuration)
+        return entries.contains { entry in
+            guard let d = entry.date else { return false }
+            return d >= cutoff
+        }
     }
 
     /// Time remaining in session
@@ -26,17 +28,31 @@ struct Session {
     /// Calculate total weighted tokens used in this session
     /// Accounts for model-specific multipliers (Opus costs more)
     var totalTokens: Double {
-        entries.reduce(0.0) { $0 + $1.weightedTokens }
+        let cutoff = Date().addingTimeInterval(-Self.sessionDuration)
+        return entries.reduce(0.0) { acc, entry in
+            guard let d = entry.date, d >= cutoff else { return acc }
+            return acc + entry.weightedTokens
+        }
     }
 
-    /// Percentage of 44,000 token limit used
+    /// Total tokens including cache (for percentage calculation like ccusage)
+    /// Only counts entries within the current 5-hour window
+    var totalTokensWithCache: Double {
+        let cutoff = Date().addingTimeInterval(-Self.sessionDuration)
+        return entries.reduce(0.0) { acc, entry in
+            guard let d = entry.date, d >= cutoff else { return acc }
+            return acc + entry.totalTokensWithCache
+        }
+    }
+
+    /// Percentage of token limit used (using cache tokens like ccusage)
     var usagePercentage: Double {
-        (totalTokens / 44000.0) * 100.0
+        (totalTokensWithCache / Config.quotaTokens()) * 100.0
     }
 
     /// Tokens remaining until limit
     var tokensRemaining: Double {
-        max(0, 44000.0 - totalTokens)
+        max(0, Config.quotaTokens() - totalTokens)
     }
 
     /// Format time remaining as "Xh Ym"

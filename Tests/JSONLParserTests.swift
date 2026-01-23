@@ -42,7 +42,8 @@ final class JSONLParserTests: XCTestCase {
             outputTokens: 50
         )
 
-        // Base weightedTotal is just input + output = 150
+        // weightedTotal = input + output = 100 + 50 = 150
+        // Cache tokens don't count against Claude Code's 44k session limit
         // Model multiplier is applied at LogEntry level
         XCTAssertEqual(usage.weightedTotal, 150.0, accuracy: 0.01)
     }

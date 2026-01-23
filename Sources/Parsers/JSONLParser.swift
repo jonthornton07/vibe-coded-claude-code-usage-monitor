@@ -14,10 +14,11 @@ class JSONLParser {
 
     /// Parse JSONL content string
     /// - Parameter content: JSONL file content as string
-    /// - Returns: Array of LogEntry objects
+    /// - Returns: Array of LogEntry objects (deduplicated by UUID)
     func parse(content: String) throws -> [LogEntry] {
         let lines = content.components(separatedBy: .newlines)
-        var entries: [LogEntry] = []
+        var entriesByUUID: [String: LogEntry] = [:]
+        var entriesWithoutUUID: [LogEntry] = []
 
         for (lineNumber, line) in lines.enumerated() {
             // Skip empty lines
@@ -32,7 +33,12 @@ class JSONLParser {
 
             do {
                 let entry = try decoder.decode(LogEntry.self, from: data)
-                entries.append(entry)
+                // Deduplicate by UUID - keep last entry (has final token counts from streaming)
+                if let uuid = entry.uuid {
+                    entriesByUUID[uuid] = entry
+                } else {
+                    entriesWithoutUUID.append(entry)
+                }
             } catch {
                 // Log parsing errors but continue processing
                 print("Warning: Could not parse line \(lineNumber + 1): \(error)")
@@ -40,26 +46,28 @@ class JSONLParser {
             }
         }
 
-        return entries
+        return Array(entriesByUUID.values) + entriesWithoutUUID
     }
 
-    /// Parse all JSONL files in a directory
+    /// Parse all JSONL files in a directory (recursively, including subagents)
     /// - Parameter directoryURL: URL to directory containing .jsonl files
     /// - Returns: Dictionary mapping file URLs to their log entries
     func parseDirectory(directoryURL: URL) throws -> [URL: [LogEntry]] {
         let fileManager = FileManager.default
         var results: [URL: [LogEntry]] = [:]
 
-        // Get all .jsonl files in directory
-        let contents = try fileManager.contentsOfDirectory(
+        // Recursively find all .jsonl files (including in subagents/ subdirectories)
+        guard let enumerator = fileManager.enumerator(
             at: directoryURL,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
-        )
+        ) else {
+            return results
+        }
 
-        let jsonlFiles = contents.filter { $0.pathExtension == "jsonl" }
+        for case let fileURL as URL in enumerator {
+            guard fileURL.pathExtension == "jsonl" else { continue }
 
-        for fileURL in jsonlFiles {
             do {
                 let entries = try parse(fileURL: fileURL)
                 results[fileURL] = entries

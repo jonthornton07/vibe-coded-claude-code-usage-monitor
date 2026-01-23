@@ -1,38 +1,42 @@
 import Foundation
 
-/// Aggregated usage data across all active sessions
+/// Usage data from ccusage
 struct UsageData {
-    let activeSessions: [Session]
+    let currentTokens: Int
+    let maxTokens: Int
+    let timeRemaining: TimeInterval
+    let models: [String]
+    let costUSD: Double
     let lastUpdated: Date
 
-    /// Total tokens across all active sessions
-    var totalTokens: Double {
-        activeSessions.reduce(0.0) { $0 + $1.totalTokens }
-    }
-
-    /// Percentage of 44,000 limit used (summed across sessions)
+    /// Percentage of token limit used
     var usagePercentage: Double {
-        (totalTokens / 44000.0) * 100.0
+        guard maxTokens > 0 else { return 0.0 }
+        return Double(currentTokens) / Double(maxTokens) * 100.0
     }
 
-    /// Tokens remaining until limit
-    var tokensRemaining: Double {
-        max(0, 44000.0 - totalTokens)
-    }
-
-    /// Format total tokens as "12.5k" or "42k"
-    var tokensFormatted: String {
-        let k = totalTokens / 1000.0
-        if k < 10 {
-            return String(format: "%.1fk", k)
-        } else {
-            return String(format: "%.0fk", k)
-        }
-    }
-
-    /// Status bar display text: "14.6%"
+    /// Status bar display text
     var statusBarText: String {
         String(format: "%.1f%%", usagePercentage)
+    }
+
+    /// Format current tokens as "12.5M" or "1.2M"
+    var tokensFormatted: String {
+        let m = Double(currentTokens) / 1_000_000.0
+        return String(format: "%.1fM", m)
+    }
+
+    /// Format max tokens as "14.6M"
+    var maxTokensFormatted: String {
+        let m = Double(maxTokens) / 1_000_000.0
+        return String(format: "%.1fM", m)
+    }
+
+    /// Time remaining formatted as "Xh Ym"
+    var timeRemainingFormatted: String {
+        let hours = Int(timeRemaining) / 3600
+        let minutes = (Int(timeRemaining) % 3600) / 60
+        return "\(hours)h \(minutes)m"
     }
 
     /// Color indicator based on usage percentage
@@ -52,8 +56,8 @@ struct UsageData {
         }
     }
 
-    /// Empty usage data (no active sessions)
+    /// Empty usage data
     static var empty: UsageData {
-        UsageData(activeSessions: [], lastUpdated: Date())
+        UsageData(currentTokens: 0, maxTokens: 0, timeRemaining: 0, models: [], costUSD: 0, lastUpdated: Date())
     }
 }
