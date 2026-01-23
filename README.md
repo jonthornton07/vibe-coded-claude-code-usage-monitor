@@ -124,12 +124,11 @@ make clean     # Remove build artifacts
 Future enhancements:
 
 - [ ] Preferences window for plan selection (Pro/Max5/Max20/Custom)
-- [ ] Notifications when approaching token limit
+- [x] Notifications when approaching token limit (85%)
 - [ ] Historical usage graphs
 - [ ] Per-project usage filtering
 - [ ] Model-specific breakdown (Sonnet vs Opus)
 - [ ] Launch at login option
-- [ ] App icon and branding
 
 ## License
 

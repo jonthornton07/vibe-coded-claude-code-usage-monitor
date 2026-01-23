@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 
 /// Controls the macOS menu bar status item
 class StatusBarController {
@@ -7,13 +8,26 @@ class StatusBarController {
     private let fileMonitor = FileMonitor()
     private var currentUsageData: UsageData = .empty
     private var refreshTimer: Timer?
+    private var hasShownHighUsageNotification = false
+    private let highUsageThreshold = 85.0
 
     init() {
         setupStatusItem()
         setupFileMonitoring()
         setupSystemNotifications()
         setupRefreshTimer()
+        requestNotificationPermissions()
         refreshUsage()
+    }
+    
+    private func requestNotificationPermissions() {
+        DispatchQueue.main.async {
+            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+                if let error = error {
+                    print("Notification permission error: \(error)")
+                }
+            }
+        }
     }
 
     deinit {
@@ -208,6 +222,40 @@ class StatusBarController {
             DispatchQueue.main.async {
                 self?.currentUsageData = usageData
                 self?.updateStatusBarDisplay()
+                self?.checkHighUsageNotification()
+            }
+        }
+    }
+    
+    private func checkHighUsageNotification() {
+        // Reset notification flag if usage drops below threshold (new session)
+        if currentUsageData.usagePercentage < highUsageThreshold {
+            hasShownHighUsageNotification = false
+            return
+        }
+        
+        // Show notification once when crossing threshold
+        if currentUsageData.usagePercentage >= highUsageThreshold && !hasShownHighUsageNotification {
+            hasShownHighUsageNotification = true
+            showHighUsageNotification()
+        }
+    }
+    
+    private func showHighUsageNotification() {
+        let content = UNMutableNotificationContent()
+        content.title = "Claude Code Usage Warning"
+        content.body = String(format: "Usage at %.0f%% - Consider wrapping up soon", currentUsageData.usagePercentage)
+        content.sound = .default
+        
+        let request = UNNotificationRequest(
+            identifier: "high-usage-\(Date().timeIntervalSince1970)",
+            content: content,
+            trigger: nil
+        )
+        
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("Failed to show notification: \(error)")
             }
         }
     }
