@@ -48,7 +48,7 @@ class CCUsageService {
     
     /// Check if ccusage is available
     func isAvailable() -> Bool {
-        let result = shell("which npx")
+        let result = shell("npx ccusage --version 2>/dev/null")
         return !result.isEmpty
     }
     
